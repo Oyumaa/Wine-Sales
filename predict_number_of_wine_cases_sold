@@ -1,0 +1,310 @@
+require(moments)
+require(stats)
+require(ggplot2)
+library(party)
+library(MASS)
+library(car)
+
+wine<-read.csv("C:/MSPA/411_Generalized Linear Regression/Project/Unit 003/wine.csv",header=TRUE,sep=",")
+str(wine)
+summary(wine)
+attach(wine)
+#************************************************************************************************************
+Missing value
+#************************************************************************************************************
+library("VIM")
+aggr(wine, prop=FALSE, numbers=TRUE)
+sapply(wine, function(x) sum(is.na(x)))
+
+
+#************************************************************************************************************
+EDA
+#************************************************************************************************************
+
+hist(TARGET,
+     breaks=8,
+     xlab="Target wins",
+     main="HISTOGRAM of Target with 8 bins",
+     border="blue")
+hist(ResidualSugar,
+     breaks=8,
+     xlab="Residual Sugar",
+     main="HISTOGRAM of Residual Sugar with 8 bins",
+     border="red")
+hist(Chlorides,
+     breaks=8,
+     xlab="Chlorides",
+     main="HISTOGRAM of Chlorides with 8 bins",
+     border="green")
+hist(FreeSulfurDioxide,
+     breaks=8,
+     xlab="FreeSulfurDioxide",
+     main="HISTOGRAM of FreeSulfurDioxide with 8 bins",
+     border="purple")
+hist(TotalSulfurDioxide,
+     breaks=8,
+     xlab="TotalSulfurDioxide",
+     main="HISTOGRAM of TotalSulfurDioxide with 8 bins",
+     border="maroon")
+hist(Sulphates,
+     breaks=8,
+     xlab="Sulphate",
+     main="HISTOGRAM of Sulphates with 8 bins",
+     border="blue")
+hist(Alcohol,
+     breaks=8,
+     xlab="Alcohol",
+     main="HISTOGRAM of Alcohol with 8 bins",
+     border="red")
+hist(STARS,
+     breaks=5,
+     xlab="Stars",
+     main="HISTOGRAM of Starts with 8 bins",
+     border="purple")
+
+**********************************************************************************************************************
+Impute missing value with MICE package
+**********************************************************************************************************************
+library(mice)
+imputed<-mice(wine,m=5,meth='pmm',seed=123)
+i.wine<-complete(imputed,1)
+summary(i.wine)
+str(i.wine)
+
+# export the imputed dataset to csv format for future use
+
+write.csv(i.wine, file="C:/MSPA/411_GLM/Project/Unit 003/wine_imputed.csv",row.names=FALSE)
+i.wine<-read.csv("C:/MSPA/411_GLM/Project/Unit 003/wine_imputed.csv",header=TRUE,sep=",")
+
+
+#************************************************************************************************************************
+Getting a descriptive statistics
+#************************************************************************************************************************
+library(pastecs)
+stat.desc(i.wine)
+
+x<-i.wine[,c("TARGET")]
+y<-i.wine[,c("FixedAcidity",
+             "VolatileAcidity",
+             "CitricAcid",
+             "ResidualSugar",
+             "Chlorides",
+             "FreeSulfurDioxide",
+             "TotalSulfurDioxide",
+             "Density",
+             "pH",
+             "Sulphates",
+             "Alcohol",
+             "LabelAppeal",
+             "AcidIndex",
+             "STARS")]
+#*************************************************************************************************************************
+# correlation
+#************************************************************************************************************************
+cor(x,y)
+summary(i.wine)
+# FixedAcidity, Volatile Acidity Citric Acid Residual Sugar Chloride FreeSulfur
+#Total Sulfur Sulphate Alcohol have negative values
+i.wine$n_FixedAcid<-(i.wine$FixedAcidity-min(i.wine$FixedAcidity))/(max(i.wine$FixedAcidity)-min(i.wine$FixedAcidity))
+i.wine$n_VolaAcid<-(i.wine$VolatileAcidity-min(i.wine$VolatileAcidity))/(max(i.wine$VolatileAcidity)-min(i.wine$VolatileAcidity))
+i.wine$n_CitricAcid<-(i.wine$CitricAcid-min(i.wine$CitricAcid))/(max(i.wine$CitricAcid)-min(i.wine$CitricAcid))
+i.wine$n_Residual<-(i.wine$ResidualSugar-min(i.wine$ResidualSugar))/(max(i.wine$ResidualSugar)-min(i.wine$ResidualSugar))
+i.wine$n_Chloride<-(i.wine$Chloride-min(i.wine$Chloride))/(max(i.wine$Chloride)-min(i.wine$Chloride))
+i.wine$n_FreeSulfurDioxide<-(i.wine$FreeSulfurDioxide-min(i.wine$FreeSulfurDioxide))/(max(i.wine$FreeSulfurDioxide)-min(i.wine$FreeSulfurDioxide))
+i.wine$n_TotalSulfurDioxide<-(i.wine$TotalSulfurDioxide-min(i.wine$TotalSulfurDioxide))/(max(i.wine$TotalSulfurDioxide)-min(i.wine$TotalSulfurDioxide))
+i.wine$n_Sulphate<-(i.wine$Sulphate-min(i.wine$Sulphate))/(max(i.wine$Sulphate)-min(i.wine$Sulphate))
+i.wine$n_Alcohol<-(i.wine$Alcohol-min(i.wine$Alcohol))/(max(i.wine$Alcohol)-min(i.wine$Alcohol))
+
+boxplot(n_FixedAcid~TARGET,data=i.wine,
+        main="BOX PLOT of n_FixedAcid by TARGET",
+        ylab="n_FixedAcid",
+        xlab="TARGET",
+        border=c("red","blue","green","yellow","orange","purple"))
+
+acid<- aggregate(n_FixedAcid~TARGET, data=i.wine,mean)
+ggplot(data=acid,aes(x=TARGET, y=n_FixedAcid))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot of Mean Fixed Acidity by TARGET")
+
+acid1<- aggregate(n_VolaAcid~TARGET, data=i.wine,mean)
+ggplot(data=acid1,aes(x=TARGET, y=n_VolaAcid))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot of Mean Volatile Acidity for TARGET")
+
+citric<-aggregate(n_CitricAcid~TARGET, data=i.wine,mean)
+ggplot(data=citric,aes(x=TARGET, y=n_CitricAcid))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot showing Mean Residual Sugar for TARGET")
+
+alc<-aggregate(n_Alcohol~TARGET, data=i.wine,mean)
+ggplot(data=alc,aes(x=TARGET, y=n_Alcohol))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot showing Mean Alcohol by TARGET")
+
+sugar<-aggregate(n_Residual~TARGET, data=i.wine,mean)
+ggplot(data=sugar,aes(x=TARGET, y=n_Residual))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot for Mean n_Residual by TARGET")
+
+chlor<-aggregate(n_Chloride~TARGET, data=i.wine,mean)
+ggplot(data=chlor,aes(x=TARGET, y=n_Chloride))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot for Mean Chlorides by TARGET")
+
+freeSul<-aggregate(n_FreeSulfurDioxide~TARGET, data=i.wine,mean)
+ggplot(data=freeSul,aes(x=TARGET, y=n_FreeSulfurDioxide))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot for Mean n_FreeSulfurDioxide by TARGET")
+
+totalSul<-aggregate(n_TotalSulfurDioxide~TARGET, data=i.wine,mean)
+ggplot(data=totalSul,aes(x=TARGET, y=n_TotalSulfurDioxide))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot for Mean n_TotalSulfurDioxide by TARGET")
+
+Sulphate<-aggregate(n_Sulphate~TARGET, data=i.wine,mean)
+ggplot(data=Sulphate,aes(x=TARGET, y=n_Sulphate))+geom_line()+geom_point(size=3)+
+  ggtitle("Plot for Mean Sulphate by TARGET")
+
+
+ggplot(data = i.wine,
+       aes(x = n_Alcohol,
+           y = TARGET))+ geom_point(aes(color = STARS),
+                                      size = 2) + ggtitle("ScatterPlot of Alcohol and Residual Sugar by Star")
+#**************************************************************************************************************
+Convert the variables LabelAppeal and STARS to categorical variables
+#**************************************************************************************************************
+imp<-i.wine$LabelAppeal==-2
+i.wine$LabelAppeal[imp]="SDisliked"
+imp1<-i.wine$LabelAppeal==-1
+i.wine$LabelAppeal[imp1]="Disliked"
+imp4<-i.wine$LabelAppeal==0
+i.wine$LabelAppeal[imp4]="OK"
+imp2<-i.wine$LabelAppeal==1
+i.wine$LabelAppeal[imp2]="Liked"
+imp3<-i.wine$LabelAppeal==2
+i.wine$LabelAppeal[imp3]="SLiked"
+
+imp<-i.wine$STARS==1
+i.wine$STARS[imp]="Star1"
+imp1<-i.wine$STARS==2
+i.wine$STARS[imp1]="Star2"
+imp2<-i.wine$STARS==3
+i.wine$STARS[imp2]="Star3"
+imp3<-i.wine$STARS==4
+i.wine$STARS[imp3]="Star4"
+
+******************************************************************************************************************
+Drop the variables that have low correlation coefficients
+******************************************************************************************************************
+str(i.wine)
+drop_var<-c("FixedAcidity",
+            "ï..INDEX",
+            "VolatileAcidity",
+            "CitricAcid",
+            "ResidualSugar",
+            "Chlorides",
+            "FreeSulfurDioxide",
+            "TotalSulfurDioxide",
+            "Sulphates",
+            "Alcohol")
+adjust_wine<-i.wine[,!(names(i.wine)%in%drop_var)]
+par(mfrow = c(2,2))
+ggplot(adjust_wine,aes(TARGET,fill=STARS))+geom_histogram(binwidth=0.5, position="dodge")
+ggplot(adjust_wine,aes(TARGET,fill=LabelAppeal))+geom_histogram(binwidth=0.5, position="dodge")
+
+adjust_wine$STARS<-as.factor(adjust_wine$STARS)
+adjust_wine$LabelAppeal<-as.factor(adjust_wine$LabelAppeal)
+
+****************************************************************************************************************
+create dummy variables with categorical variables
+***************************************************************************************************************
+library(dummy)
+adjust_dummy<-dummy(adjust_wine,p="all",int=TRUE)
+str(adjust_dummy)
+drop_var1<-c("STARS","LabelAppeal")
+adjust_wine_drop<-adjust_wine[,!(names(adjust_wine)%in%drop_var1)]
+str(adjust_wine_drop)
+wine_reg_set<-cbind(adjust_wine_drop,adjust_dummy)
+str(wine_reg_set)
+#***************************************************************************************************************
+
+POISSON MODEL
+
+#***************************************************************************************************************
+poisson<-glm(TARGET~.,family="poisson",data=wine_reg_set)
+summary(poisson)
+with(poisson,cbind(res.deviance=deviance,df=df.residual, p=pchisq(deviance,df.residual,lower.tail = FALSE)))
+pred<-predict(poisson,wine_reg_set,type="response",se.fit=TRUE)
+write.csv(pred, file="C:/MSPA/411_GLM/Project/Unit 003/wine_pred.csv",row.names=FALSE)
+
+#*****************************************************************************************************************
+Validate the model on the test set.
+
+wine_test<-read.csv("C:/MSPA/411_GLM/Project/Unit 003/wine_test.csv",header=TRUE,sep=",")
+summary(wine_test)
+imputed<-mice(wine_test,m=7,meth='pmm',seed=123)
+i.wine_test<-complete(imputed,1)
+summary(i.wine_test)
+i.wine_test$n_FixedAcid<-(i.wine_test$FixedAcidity-min(i.wine_test$FixedAcidity))/(max(i.wine_test$FixedAcidity)-min(i.wine_test$FixedAcidity))
+i.wine_test$n_VolaAcid<-(i.wine_test$VolatileAcidity-min(i.wine_test$VolatileAcidity))/(max(i.wine_test$VolatileAcidity)-min(i.wine_test$VolatileAcidity))
+i.wine_test$n_CitricAcid<-(i.wine_test$CitricAcid-min(i.wine_test$CitricAcid))/(max(i.wine_test$CitricAcid)-min(i.wine_test$CitricAcid))
+i.wine_test$n_Residual<-(i.wine_test$ResidualSugar-min(i.wine_test$ResidualSugar))/(max(i.wine_test$ResidualSugar)-min(i.wine_test$ResidualSugar))
+i.wine_test$n_Chloride<-(i.wine_test$Chloride-min(i.wine_test$Chloride))/(max(i.wine_test$Chloride)-min(i.wine_test$Chloride))
+i.wine_test$n_FreeSulfurDioxide<-(i.wine_test$FreeSulfurDioxide-min(i.wine_test$FreeSulfurDioxide))/(max(i.wine_test$FreeSulfurDioxide)-min(i.wine_test$FreeSulfurDioxide))
+i.wine_test$n_TotalSulfurDioxide<-(i.wine_test$TotalSulfurDioxide-min(i.wine_test$TotalSulfurDioxide))/(max(i.wine_test$TotalSulfurDioxide)-min(i.wine_test$TotalSulfurDioxide))
+i.wine_test$n_Sulphate<-(i.wine_test$Sulphate-min(i.wine_test$Sulphate))/(max(i.wine_test$Sulphate)-min(i.wine_test$Sulphate))
+i.wine_test$n_Alcohol<-(i.wine_test$Alcohol-min(i.wine_test$Alcohol))/(max(i.wine_test$Alcohol)-min(i.wine_test$Alcohol))
+
+imp<-i.wine_test$LabelAppeal==-2
+i.wine_test$LabelAppeal[imp]="SDisliked"
+imp1<-i.wine_test$LabelAppeal==-1
+i.wine_test$LabelAppeal[imp1]="Disliked"
+imp4<-i.wine_test$LabelAppeal==0
+i.wine_test$LabelAppeal[imp4]="OK"
+imp2<-i.wine_test$LabelAppeal==1
+i.wine_test$LabelAppeal[imp2]="Liked"
+imp3<-i.wine_test$LabelAppeal==2
+i.wine_test$LabelAppeal[imp3]="SLiked"
+
+imp<-i.wine_test$STARS==1
+i.wine_test$STARS[imp]="Star1"
+imp1<-i.wine_test$STARS==2
+i.wine_test$STARS[imp1]="Star2"
+imp2<-i.wine_test$STARS==3
+i.wine_test$STARS[imp2]="Star3"
+imp3<-i.wine_test$STARS==4
+i.wine_test$STARS[imp3]="Star4"
+str(i.wine_test)
+summary(i.wine_test)
+drop_var<-c("ï..INDEX",
+            "TARGET",
+            "FixedAcidity",
+            "VolatileAcidity",
+            "CitricAcid",
+            "ResidualSugar",
+            "Chlorides",
+            "FreeSulfurDioxide",
+            "TotalSulfurDioxide",
+            "Sulphates",
+            "Alcohol")
+adjust_wine_test<-i.wine_test[,!(names(i.wine_test)%in%drop_var)]
+adjust_wine_test$STARS<-as.factor(adjust_wine_test$STARS)
+adjust_wine_test$LabelAppeal<-as.factor(adjust_wine_test$LabelAppeal)
+str(adjust_wine_test)
+adjust_dummy_test<-dummy(adjust_wine_test,p="all",int=TRUE)
+str(adjust_dummy_test)
+drop_var1<-c("STARS","LabelAppeal")
+adjust_wine_drop_test<-adjust_wine_test[,!(names(adjust_wine_test)%in%drop_var1)]
+str(adjust_wine_drop_test)
+wine_reg_set_test<-cbind(adjust_wine_drop_test,adjust_dummy_test)
+str(wine_reg_set_test)
+pred_test<-predict(poisson,wine_reg_set_test,type="response",se.fit=FALSE)
+# BINDINDEX and PRED
+submit <-data.frame(INDEX=i.wine_test$ï..INDEX, P_TARGET= pred_test)
+write.csv(submit, file="C:/MSPA/411_GLM/Project/Unit 003/wine_pred_test.csv",row.names=FALSE)
+#*************************************************************************************************************
+#RANDOM FOREST Model
+#*************************************************************************************************************
+library(randomForest)
+set.seed(415)
+fit <- randomForest(TARGET ~.,
+                    data=wine_reg_set, 
+                    importance=TRUE, 
+                    ntree=150)
+varImpPlot(fit)
+Prediction <- predict(fit, wine_reg_set_test)
+submit <-data.frame(INDEX=i.wine_test$ï..INDEX, P_TARGET= Prediction)
+write.csv(submit, file = "C:/MSPA/411_GLM/Project/Unit 003/firstforest.csv", row.names = FALSE)
+
