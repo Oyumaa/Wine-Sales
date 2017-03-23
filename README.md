@@ -1,1 +1,1 @@
-# Wine-Sales
+Predict number of cases of wine to be distributed to distribution centers. After initial EDA, missing values were imputed, and categorical variables were converted to dummy variables. Applied Random Forest algorithm for variable selections. After variables are selected, The Poisson, Zip, Negative Binomial and Hurdle regression models were built. The best model was selected based on performance on the test set. 
